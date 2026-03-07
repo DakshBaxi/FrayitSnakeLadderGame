@@ -7,7 +7,7 @@
   RoomState,
   SNAKES,
 } from "./gameTypes"
-
+import { initDb, isDbEnabled, getDbPool } from "./db"
 
 const roomStore = getRoomStore()
 
@@ -224,24 +224,64 @@ async function generateRoomId(): Promise<string> {
 
 async function roomExists(roomId: string): Promise<boolean> {
   const safeRoomId = roomId.toUpperCase()
-  return roomStore.has(safeRoomId)
-}
 
+  if (!isDbEnabled()) {
+    return roomStore.has(safeRoomId)
+  }
+
+  await initDb()
+  const result = await getDbPool().query<{ exists: boolean }>(
+    "SELECT EXISTS(SELECT 1 FROM rooms WHERE id = $1) AS exists",
+    [safeRoomId]
+  )
+
+  return result.rows[0]?.exists ?? false
+}
 
 async function getRoomOrThrow(roomId: string): Promise<RoomState> {
   const safeRoomId = roomId.toUpperCase()
 
-  const cached = roomStore.get(safeRoomId)
-  if (cached) {
-    return cached
+  if (!isDbEnabled()) {
+    const cached = roomStore.get(safeRoomId)
+    if (cached) {
+      return cached
+    }
+    throw new Error("Room not found.")
   }
 
-  throw new Error("Room not found.")
+  await initDb()
+  const result = await getDbPool().query<{ state: RoomState }>(
+    "SELECT state FROM rooms WHERE id = $1",
+    [safeRoomId]
+  )
+
+  const row = result.rows[0]
+  if (!row) {
+    throw new Error("Room not found.")
+  }
+
+  return row.state
 }
 
 async function persistRoom(room: RoomState): Promise<void> {
   const safeRoomId = room.roomId.toUpperCase()
-  roomStore.set(safeRoomId, room)
+
+  if (!isDbEnabled()) {
+    roomStore.set(safeRoomId, room)
+    return
+  }
+
+  await initDb()
+  await getDbPool().query(
+    `
+      INSERT INTO rooms (id, state, updated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (id) DO UPDATE
+      SET state = EXCLUDED.state,
+          updated_at = NOW()
+    `,
+    [safeRoomId, room]
+  )
 }
 
 function getRoomStore(): Map<string, RoomState> {
