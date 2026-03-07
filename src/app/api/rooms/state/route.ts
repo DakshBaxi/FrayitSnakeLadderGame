@@ -11,6 +11,7 @@ export async function GET(request: Request) {
   }
 
   try {
+
     const room = await getRoomSnapshot(roomId, playerId)
     return ok({ room })
   } catch (error: unknown) {

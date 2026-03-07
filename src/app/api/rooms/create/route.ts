@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     if (!body.playerId?.trim() || !body.playerName?.trim()) {
       return fail("playerId and playerName are required.")
     }
-
+   
     const room = await createRoom(body.playerId.trim(), body.playerName.trim())
     return ok({ room })
   } catch (error: unknown) {

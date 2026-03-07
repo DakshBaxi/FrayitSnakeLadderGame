@@ -15,7 +15,7 @@ Production-ready multiplayer **Snakes & Ladders** (2-4 players) built to showcas
 ## Stack
 
 - Next.js 16 (App Router, webpack mode) + TypeScript
-- Postgres-backed room/game persistence (survives server restarts)
+- In-memory room/game persistence (resets on server restart)
 - Frayit SDK server-side for moderation and chat channel connection
 
 ## Environment
@@ -31,7 +31,6 @@ Fill values:
 - `FRAYIT_CLIENT_ID`
 - `FRAYIT_CLIENT_SECRET`
 - `FRAYIT_BASE_URL`
-- `DATABASE_URL` (Postgres connection string)
 
 ## Run
 
@@ -41,12 +40,6 @@ npm run dev
 ```
 
 Open: `http://localhost:3000`
-
-## Postgres Setup
-
-- Schema file: `db/schema.sql`
-- Tables are also auto-created on first API access if `DATABASE_URL` is set.
-- If `DATABASE_URL` is not set, app falls back to in-memory rooms (non-persistent).
 
 ## Game Flow
 

@@ -7,7 +7,7 @@
   RoomState,
   SNAKES,
 } from "./gameTypes"
-import { loadRoomState, persistenceEnabled, saveRoomState } from "./postgres"
+
 
 const roomStore = getRoomStore()
 
@@ -223,22 +223,10 @@ async function generateRoomId(): Promise<string> {
 }
 
 async function roomExists(roomId: string): Promise<boolean> {
-  if (roomStore.has(roomId)) {
-    return true
-  }
-
-  if (!persistenceEnabled()) {
-    return false
-  }
-
-  const room = await loadRoomState(roomId)
-  if (!room) {
-    return false
-  }
-
-  roomStore.set(roomId, room)
-  return true
+  const safeRoomId = roomId.toUpperCase()
+  return roomStore.has(safeRoomId)
 }
+
 
 async function getRoomOrThrow(roomId: string): Promise<RoomState> {
   const safeRoomId = roomId.toUpperCase()
@@ -248,18 +236,12 @@ async function getRoomOrThrow(roomId: string): Promise<RoomState> {
     return cached
   }
 
-  const persisted = await loadRoomState(safeRoomId)
-  if (persisted) {
-    roomStore.set(safeRoomId, persisted)
-    return persisted
-  }
-
   throw new Error("Room not found.")
 }
 
 async function persistRoom(room: RoomState): Promise<void> {
-  roomStore.set(room.roomId, room)
-  await saveRoomState(room)
+  const safeRoomId = room.roomId.toUpperCase()
+  roomStore.set(safeRoomId, room)
 }
 
 function getRoomStore(): Map<string, RoomState> {
