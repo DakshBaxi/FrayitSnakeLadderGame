@@ -43,9 +43,11 @@ export function RoomClient({ roomId }: RoomClientProps) {
   const [chatScope, setChatScope] = useState<ChatScope>("game")
   const [globalChat, setGlobalChat] = useState<ChatMessage[]>([])
   const [gameChat, setGameChat] = useState<ChatMessage[]>([])
+  const [chatLatencyMs, setChatLatencyMs] = useState<number | null>(null)
 
   const eventSourceRef = useRef<EventSource | null>(null)
   const startedRef = useRef(false)
+  const seenChatIdsRef = useRef<Set<string>>(new Set())
 
   const me = room?.me
   const canStart = room?.players?.[0]?.id === playerId && room.status !== "active" && (room.players.length ?? 0) >= 2
@@ -115,10 +117,21 @@ export function RoomClient({ roomId }: RoomClientProps) {
         const payload = JSON.parse(event.data) as StreamChatEvent
         const mapped = mapChatEvent(payload)
 
+        if (mapped.id) {
+          if (seenChatIdsRef.current.has(mapped.id)) {
+            return
+          }
+          seenChatIdsRef.current.add(mapped.id)
+        }
+
         if (mapped.scope === "global") {
           setGlobalChat((prev) => [mapped, ...prev].slice(0, 120))
         } else {
           setGameChat((prev) => [mapped, ...prev].slice(0, 120))
+        }
+
+        if (payload.sentAt) {
+          setChatLatencyMs(Date.now() - payload.sentAt)
         }
       } catch {
         // ignore malformed stream packets
@@ -387,7 +400,14 @@ export function RoomClient({ roomId }: RoomClientProps) {
           </section>
 
           <section className="panel" style={{ padding: 14 }}>
-            <h2 style={{ marginTop: 0 }}>Chat</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+              <h2 style={{ marginTop: 0 }}>Chat</h2>
+              {chatLatencyMs != null ? (
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  Latency: {chatLatencyMs} ms
+                </span>
+              ) : null}
+            </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
               <button
                 type="button"
