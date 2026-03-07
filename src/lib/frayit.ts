@@ -12,15 +12,17 @@ export function getFrayitClient(): FrayitClient {
   const clientId = process.env.FRAYIT_CLIENT_ID
   const clientSecret = process.env.FRAYIT_CLIENT_SECRET
   const baseUrl = process.env.FRAYIT_BASE_URL
-
+  const chatTimeoutMs = 500
   if (!clientId || !clientSecret || !baseUrl) {
     throw new Error("Missing Frayit env vars. Set FRAYIT_CLIENT_ID, FRAYIT_CLIENT_SECRET, FRAYIT_BASE_URL.")
   }
+  
 
   client = new FrayitClient({
     clientId,
     clientSecret,
     baseUrl,
+    chatTimeoutMs
   })
 
   return client
