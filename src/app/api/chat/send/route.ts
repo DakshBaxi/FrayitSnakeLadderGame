@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       channel_id: channelId,
       message,
     })
-
+    console.log(result);
     return ok({ result })
   } catch (error: unknown) {
     return fail(error instanceof Error ? error.message : "Unable to send message.", 500)

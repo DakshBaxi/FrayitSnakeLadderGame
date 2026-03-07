@@ -199,9 +199,7 @@ export function RoomClient({ roomId }: RoomClientProps) {
     }
   }
 
-  const onSendChat = async (event: FormEvent) => {
-    event.preventDefault()
-
+  const sendChat = async () => {
     const text = chatInput.trim()
     if (!text || !playerId) {
       return
@@ -249,6 +247,20 @@ export function RoomClient({ roomId }: RoomClientProps) {
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : "Could not send chat message")
     }
+  }
+
+  const onSendChat = async (event: FormEvent) => {
+    event.preventDefault()
+    await sendChat()
+  }
+
+  const onChatKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) {
+      return
+    }
+
+    event.preventDefault()
+    await sendChat()
   }
 
   const pushSystem = (scope: ChatScope, text: string) => {
@@ -480,6 +492,7 @@ export function RoomClient({ roomId }: RoomClientProps) {
               <textarea
                 value={chatInput}
                 onChange={(event) => setChatInput(event.target.value)}
+                onKeyDown={onChatKeyDown}
                 placeholder={`Message ${chatScope} chat...`}
                 rows={2}
                 maxLength={240}
