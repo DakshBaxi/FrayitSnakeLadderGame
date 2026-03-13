@@ -2,13 +2,14 @@
 import { fileURLToPath } from "node:url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const workspaceRoot = path.join(__dirname, "..")
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typedRoutes: false,
   serverExternalPackages: ["@frayit/sdk", "ws"],
   turbopack: {
-    root: __dirname,
+    root: workspaceRoot,
   },
 }
 

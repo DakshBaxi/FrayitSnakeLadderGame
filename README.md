@@ -1,6 +1,6 @@
 ﻿# Frayit 4-Player Game
 
-Production-ready multiplayer **Snakes & Ladders** (2-4 players) built to showcase Frayit moderated chat.
+Production-ready multiplayer **Snakes & Ladders** (2-4 players) built to showcase Frayit moderated chat and voice control APIs.
 
 ## Features
 
@@ -10,13 +10,18 @@ Production-ready multiplayer **Snakes & Ladders** (2-4 players) built to showcas
 - Two live chats per room:
   - `Global Chat` (shared across rooms)
   - `Game Chat` (room-specific)
-- All chat send + stream flow through `@frayit/sdk`
+- Team voice per room:
+  - Auto-joins when player enters the room
+  - Starts muted like common multiplayer games
+  - Simple in-game controls for mic, voice audio, and per-player local mute
+  - Live participant roster backed by Frayit voice state
+- All chat + voice flows through local `@frayit/sdk` reference
 
 ## Stack
 
 - Next.js 16 (App Router, webpack mode) + TypeScript
 - In-memory room/game persistence (resets on server restart)
-- Frayit SDK server-side for moderation and chat channel connection
+- Frayit SDK server-side for moderation and voice control
 
 ## Environment
 
@@ -31,6 +36,8 @@ Fill values:
 - `FRAYIT_CLIENT_ID`
 - `FRAYIT_CLIENT_SECRET`
 - `FRAYIT_BASE_URL`
+- `FRAYIT_CHAT_TIMEOUT_MS` (optional)
+- `FRAYIT_VOICE_TIMEOUT_MS` (optional)
 
 ## Run
 
@@ -57,6 +64,17 @@ Open: `http://localhost:3000`
   - `game-<ROOM_ID>`
 - Browser receives SSE events and renders chat live.
 
+## Voice Flow (Frayit)
+
+- Room UI auto-calls `POST /api/voice/join` when player enters the room
+- Browser then connects to LiveKit using returned `livekit_url` + `livekit_token`
+- Room UI uses `GET /api/voice/state` to keep the roster fresh
+- Room UI uses `GET/POST /api/voice/local` for:
+  - `setSelfMuted`, `setSelfDeafened`
+  - `setPeerMutedLocally`
+- `POST /api/voice/leave` is called on room cleanup
+
 ## Notes
 
+- SDK is consumed locally from `file:../frayit_sdk_ts` in `package.json`, so publishing is not required for testing.
 - Do not expose Frayit secrets to browser; all SDK usage stays server-side.

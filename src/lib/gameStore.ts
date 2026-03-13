@@ -11,6 +11,12 @@ import { initDb, isDbEnabled, getDbPool } from "./db"
 
 const roomStore = getRoomStore()
 
+export interface LeaveRoomResult {
+  room?: RoomSnapshot
+  roomClosed: boolean
+  removed: boolean
+}
+
 export async function createRoom(playerId: string, playerName: string): Promise<RoomSnapshot> {
   const roomId = await generateRoomId()
   const now = Date.now()
@@ -88,6 +94,73 @@ export async function getRoomSnapshot(roomId: string, playerId?: string): Promis
   }
 
   return snapshotFor(room, playerId)
+}
+
+export async function leaveRoom(roomId: string, playerId: string): Promise<LeaveRoomResult> {
+  const safeRoomId = roomId.toUpperCase()
+  const safePlayerId = playerId.trim()
+
+  if (!safeRoomId) {
+    throw new Error("roomId is required.")
+  }
+
+  if (!safePlayerId) {
+    throw new Error("playerId is required.")
+  }
+
+  const room = await getRoom(safeRoomId)
+  if (!room) {
+    return {
+      roomClosed: true,
+      removed: false,
+    }
+  }
+
+  const playerIndex = room.players.findIndex((player) => player.id === safePlayerId)
+  if (playerIndex === -1) {
+    return {
+      room: snapshotFor(room),
+      roomClosed: false,
+      removed: false,
+    }
+  }
+
+  room.players.splice(playerIndex, 1)
+
+  if (room.players.length === 0) {
+    await deleteRoom(safeRoomId)
+    return {
+      roomClosed: true,
+      removed: true,
+    }
+  }
+
+  if (room.winnerId === safePlayerId) {
+    room.winnerId = undefined
+  }
+
+  if (playerIndex < room.turnIndex) {
+    room.turnIndex -= 1
+  }
+
+  if (room.turnIndex >= room.players.length) {
+    room.turnIndex = 0
+  }
+
+  if (room.status === "active" && room.players.length < 2) {
+    room.status = "lobby"
+    room.turnIndex = 0
+    room.winnerId = undefined
+  }
+
+  room.updatedAt = Date.now()
+  await persistRoom(room)
+
+  return {
+    room: snapshotFor(room),
+    roomClosed: false,
+    removed: true,
+  }
 }
 
 export async function startGame(roomId: string, playerId: string): Promise<RoomSnapshot> {
@@ -239,28 +312,12 @@ async function roomExists(roomId: string): Promise<boolean> {
 }
 
 async function getRoomOrThrow(roomId: string): Promise<RoomState> {
-  const safeRoomId = roomId.toUpperCase()
-
-  if (!isDbEnabled()) {
-    const cached = roomStore.get(safeRoomId)
-    if (cached) {
-      return cached
-    }
+  const room = await getRoom(roomId)
+  if (!room) {
     throw new Error("Room not found.")
   }
 
-  await initDb()
-  const result = await getDbPool().query<{ state: RoomState }>(
-    "SELECT state FROM rooms WHERE id = $1",
-    [safeRoomId]
-  )
-
-  const row = result.rows[0]
-  if (!row) {
-    throw new Error("Room not found.")
-  }
-
-  return row.state
+  return room
 }
 
 async function persistRoom(room: RoomState): Promise<void> {
@@ -282,6 +339,34 @@ async function persistRoom(room: RoomState): Promise<void> {
     `,
     [safeRoomId, room]
   )
+}
+
+async function getRoom(roomId: string): Promise<RoomState | null> {
+  const safeRoomId = roomId.toUpperCase()
+
+  if (!isDbEnabled()) {
+    return roomStore.get(safeRoomId) ?? null
+  }
+
+  await initDb()
+  const result = await getDbPool().query<{ state: RoomState }>(
+    "SELECT state FROM rooms WHERE id = $1",
+    [safeRoomId]
+  )
+
+  return result.rows[0]?.state ?? null
+}
+
+async function deleteRoom(roomId: string): Promise<void> {
+  const safeRoomId = roomId.toUpperCase()
+
+  if (!isDbEnabled()) {
+    roomStore.delete(safeRoomId)
+    return
+  }
+
+  await initDb()
+  await getDbPool().query("DELETE FROM rooms WHERE id = $1", [safeRoomId])
 }
 
 function getRoomStore(): Map<string, RoomState> {

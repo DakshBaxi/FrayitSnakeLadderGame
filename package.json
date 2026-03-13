@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@frayit/sdk": "^1.1.1",
+    "@frayit/sdk": "^1.2.0",
+    "livekit-client": "^2.17.3",
     "next": "16.1.6",
     "pg": "^8.20.0",
     "react": "19.2.0",
